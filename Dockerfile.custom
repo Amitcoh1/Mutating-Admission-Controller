@@ -1,0 +1,8 @@
+# Use the existing working webhook image as base
+FROM webhook-mutator:latest
+
+# Copy our custom application
+COPY app.py /app/main.py
+
+# Keep the same entry point
+CMD ["python", "/app/main.py"]
