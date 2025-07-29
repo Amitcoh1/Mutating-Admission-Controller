@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-cpu-mutator
+  namespace: default
+  labels:
+    app: pod-cpu-mutator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pod-cpu-mutator
+  template:
+    metadata:
+      labels:
+        app: pod-cpu-mutator
+    spec:
+      containers:
+      - name: pod-cpu-mutator
+        image: pod-cpu-mutator:local
+        imagePullPolicy: Never  # For minikube local images
+        ports:
+        - containerPort: 8443
+          name: webhook
+          protocol: TCP
+        env:
+        - name: TLS_CERT_FILE
+          value: "/etc/certs/tls.crt"
+        - name: TLS_PRIVATE_KEY_FILE
+          value: "/etc/certs/tls.key"
+        - name: CPU_THRESHOLD_MILLICORES
+          value: "1000"  # Test: 1 CPU = 1000m. Adjust as needed.
+        - name: MIN_PODS_WITH_NODE_SELECTOR
+          value: "2"  # Minimum number of pods that must have the required node selector
+        - name: REQUIRED_NODE_SELECTOR_KEY
+          value: "node-type"  # The node selector key to check
+        - name: REQUIRED_NODE_SELECTOR_VALUE
+          value: "on_demand"  # The required value for the node selector
+        volumeMounts:
+        - name: webhook-certs
+          mountPath: /etc/certs
+          readOnly: true
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8443
+            scheme: HTTPS
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8443
+            scheme: HTTPS
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: webhook-certs
+        secret:
+          secretName: pod-cpu-mutator-certs
